@@ -2,6 +2,15 @@
 
 Zotero → Obsidian literature note sync pipeline.
 
+## 知识星空 (Knowledge Sky)
+
+`app/index.html` — a spaced-repetition learning app where every piece of
+knowledge is a star in your night sky. Star brightness tracks real memory
+retention (forgetting curve); reviewing at the right time makes stars
+brighter and bigger; cards sharing a topic form constellations; stars due
+for review pulse gold. SM-2 scheduling, localStorage persistence,
+JSON export/import, fully offline — just open the file in a browser.
+
 ## How it works
 
 ```
