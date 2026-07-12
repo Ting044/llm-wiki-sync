@@ -1,0 +1,943 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>知识星空 · 你的记忆是一片夜空</title>
+<style>
+/* ============ tokens ============ */
+:root{
+  --sky-0:#05070f;
+  --sky-1:#0a1024;
+  --ink:#e8ecfb;
+  --ink-dim:#7f89ad;
+  --ink-faint:#4a5372;
+  --gold:#f0c674;
+  --gold-deep:#c99a3e;
+  --line:rgba(136,158,255,.18);
+  --panel:rgba(10,15,32,.86);
+  --panel-edge:rgba(136,158,255,.14);
+  --danger:#e07a7a;
+  --ok:#7fd8b4;
+  --serif:"Noto Serif SC","Songti SC","Songti TC","STSong",serif;
+  --sans:"PingFang SC","Noto Sans SC","Microsoft YaHei",system-ui,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  background:var(--sky-0);
+  color:var(--ink);
+  font-family:var(--sans);
+  overflow:hidden;
+  -webkit-font-smoothing:antialiased;
+}
+button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+input,textarea{font-family:inherit;color:inherit}
+
+#sky{position:fixed;inset:0;display:block}
+
+/* ============ top bar ============ */
+.topbar{
+  position:fixed;top:0;left:0;right:0;z-index:10;
+  display:flex;align-items:baseline;gap:1.25rem;flex-wrap:wrap;
+  padding:.9rem 1.4rem;
+  background:linear-gradient(180deg,rgba(5,7,15,.85),rgba(5,7,15,0));
+  pointer-events:none;
+}
+.topbar>*{pointer-events:auto}
+.brand{font-family:var(--serif);font-size:1.25rem;letter-spacing:.35em;font-weight:600}
+.brand small{
+  display:block;font-family:var(--sans);font-size:.65rem;font-weight:400;
+  letter-spacing:.18em;color:var(--ink-dim);margin-top:.15rem;
+}
+.stats{display:flex;gap:1rem;margin-left:auto;align-items:center;font-size:.8rem;color:var(--ink-dim)}
+.stat b{
+  font-family:var(--serif);font-size:1.05rem;color:var(--ink);
+  font-variant-numeric:tabular-nums;margin-right:.2em;
+}
+.stat.due b{color:var(--gold)}
+.icon-btn{
+  font-size:.8rem;color:var(--ink-dim);padding:.35rem .7rem;
+  border:1px solid var(--panel-edge);border-radius:999px;
+  transition:color .2s,border-color .2s;
+}
+.icon-btn:hover{color:var(--ink);border-color:var(--ink-faint)}
+
+/* ============ actions ============ */
+.actions{position:fixed;right:1.4rem;bottom:1.4rem;z-index:10;display:flex;flex-direction:column;gap:.6rem;align-items:flex-end}
+.btn{
+  padding:.7rem 1.3rem;border-radius:999px;font-size:.9rem;letter-spacing:.08em;
+  border:1px solid var(--panel-edge);background:var(--panel);color:var(--ink);
+  backdrop-filter:blur(6px);transition:transform .15s,border-color .2s,box-shadow .2s;
+}
+.btn:hover{transform:translateY(-1px);border-color:var(--ink-faint)}
+.btn.primary{
+  background:linear-gradient(160deg,var(--gold),var(--gold-deep));
+  color:#1c1608;border-color:transparent;font-weight:600;
+  box-shadow:0 0 24px rgba(240,198,116,.28);
+}
+.btn.primary:hover{box-shadow:0 0 34px rgba(240,198,116,.45)}
+.btn:disabled{opacity:.45;cursor:default;transform:none;box-shadow:none}
+
+/* ============ tooltip ============ */
+#tip{
+  position:fixed;z-index:20;pointer-events:none;display:none;max-width:16rem;
+  padding:.55rem .8rem;border-radius:.5rem;font-size:.78rem;line-height:1.5;
+  background:var(--panel);border:1px solid var(--panel-edge);backdrop-filter:blur(6px);
+}
+#tip .t-front{color:var(--ink);font-weight:600}
+#tip .t-meta{color:var(--ink-dim);font-size:.7rem;margin-top:.15rem;font-variant-numeric:tabular-nums}
+
+/* ============ modal ============ */
+.veil{
+  position:fixed;inset:0;z-index:30;display:none;
+  align-items:center;justify-content:center;padding:1rem;
+  background:rgba(3,5,12,.72);backdrop-filter:blur(3px);
+}
+.veil.open{display:flex}
+.sheet{
+  width:min(30rem,100%);max-height:88vh;overflow-y:auto;
+  background:linear-gradient(180deg,#101731,#0a1024);
+  border:1px solid var(--panel-edge);border-radius:1rem;
+  padding:1.6rem 1.7rem;box-shadow:0 24px 80px rgba(0,0,0,.6);
+}
+.sheet h2{font-family:var(--serif);font-size:1.15rem;letter-spacing:.2em;margin-bottom:1.1rem}
+.field{margin-bottom:1rem}
+.field label{display:block;font-size:.72rem;letter-spacing:.15em;color:var(--ink-dim);margin-bottom:.4rem}
+.field input,.field textarea{
+  width:100%;padding:.6rem .75rem;border-radius:.5rem;font-size:.9rem;line-height:1.55;
+  background:rgba(5,7,15,.6);border:1px solid var(--panel-edge);outline:none;
+  transition:border-color .2s;
+}
+.field input:focus,.field textarea:focus{border-color:var(--gold-deep)}
+.field textarea{resize:vertical;min-height:4.2rem}
+.sheet-foot{display:flex;gap:.6rem;justify-content:flex-end;margin-top:1.3rem}
+.ghost{padding:.55rem 1rem;border-radius:999px;font-size:.85rem;color:var(--ink-dim);border:1px solid transparent}
+.ghost:hover{color:var(--ink);border-color:var(--panel-edge)}
+.ghost.danger:hover{color:var(--danger);border-color:rgba(224,122,122,.4)}
+
+/* ============ review card ============ */
+.review-progress{font-size:.72rem;letter-spacing:.2em;color:var(--ink-dim);margin-bottom:1rem;font-variant-numeric:tabular-nums}
+.review-tag{font-size:.72rem;letter-spacing:.15em;color:var(--gold);margin-bottom:.6rem}
+.review-q{font-family:var(--serif);font-size:1.35rem;line-height:1.6;text-wrap:balance;margin-bottom:1.2rem}
+.review-a{
+  font-size:.95rem;line-height:1.75;color:var(--ink);
+  border-top:1px solid var(--panel-edge);padding-top:1.1rem;margin-bottom:1.2rem;
+  white-space:pre-wrap;
+}
+.grades{display:grid;grid-template-columns:repeat(4,1fr);gap:.5rem}
+.grade{
+  padding:.6rem .3rem;border-radius:.6rem;border:1px solid var(--panel-edge);
+  background:rgba(5,7,15,.5);font-size:.82rem;transition:border-color .2s,background .2s;
+}
+.grade small{display:block;font-size:.62rem;color:var(--ink-dim);margin-top:.25rem;font-variant-numeric:tabular-nums}
+.grade:hover{border-color:var(--ink-faint);background:rgba(20,28,58,.7)}
+.grade.g1:hover{border-color:rgba(224,122,122,.5)}
+.grade.g4:hover{border-color:rgba(240,198,116,.55)}
+.flip-hint{text-align:center;font-size:.68rem;color:var(--ink-faint);margin-top:.9rem;letter-spacing:.1em}
+
+/* ============ side panel (星表) ============ */
+.panel{
+  position:fixed;top:0;right:0;bottom:0;z-index:25;width:min(24rem,92vw);
+  background:var(--panel);border-left:1px solid var(--panel-edge);backdrop-filter:blur(10px);
+  transform:translateX(102%);transition:transform .3s ease;
+  display:flex;flex-direction:column;
+}
+.panel.open{transform:none}
+.panel-head{display:flex;align-items:center;justify-content:space-between;padding:1.1rem 1.3rem .8rem}
+.panel-head h2{font-family:var(--serif);font-size:1rem;letter-spacing:.3em}
+.panel-body{flex:1;overflow-y:auto;padding:0 1.3rem 1rem}
+.const-name{
+  font-size:.7rem;letter-spacing:.2em;color:var(--gold);
+  margin:1.1rem 0 .5rem;display:flex;align-items:center;gap:.5rem;
+}
+.const-name::after{content:"";flex:1;height:1px;background:var(--panel-edge)}
+.card-row{
+  display:flex;align-items:center;gap:.7rem;padding:.55rem .6rem;border-radius:.5rem;
+  font-size:.82rem;cursor:pointer;transition:background .15s;
+}
+.card-row:hover{background:rgba(136,158,255,.08)}
+.card-row .dot{width:.5rem;height:.5rem;border-radius:50%;flex:none;background:var(--ink);box-shadow:0 0 6px currentColor}
+.card-row .name{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.card-row .mem{font-size:.68rem;color:var(--ink-dim);font-variant-numeric:tabular-nums;flex:none}
+.panel-foot{padding: .9rem 1.3rem 1.1rem;border-top:1px solid var(--panel-edge);display:flex;gap:.8rem;font-size:.72rem}
+.panel-foot button{color:var(--ink-dim)}
+.panel-foot button:hover{color:var(--ink)}
+
+/* ============ detail ============ */
+.detail-stats{
+  display:grid;grid-template-columns:repeat(3,1fr);gap:.5rem;margin:1.1rem 0;
+  font-size:.68rem;color:var(--ink-dim);text-align:center;
+}
+.detail-stats b{
+  display:block;font-family:var(--serif);font-size:1.05rem;color:var(--ink);
+  font-variant-numeric:tabular-nums;margin-bottom:.2rem;
+}
+.membar{height:.28rem;border-radius:99px;background:rgba(136,158,255,.12);overflow:hidden;margin:.4rem 0 1rem}
+.membar i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,var(--gold-deep),var(--gold))}
+
+/* ============ toast ============ */
+#toast{
+  position:fixed;left:50%;bottom:6.5rem;transform:translate(-50%,1rem);z-index:40;
+  padding:.6rem 1.2rem;border-radius:999px;font-size:.82rem;letter-spacing:.05em;
+  background:var(--panel);border:1px solid var(--panel-edge);backdrop-filter:blur(6px);
+  opacity:0;transition:opacity .3s,transform .3s;pointer-events:none;max-width:88vw;text-align:center;
+}
+#toast.show{opacity:1;transform:translate(-50%,0)}
+#toast.gold{border-color:rgba(240,198,116,.5);color:var(--gold)}
+
+/* ============ welcome ============ */
+.welcome-body{font-size:.88rem;line-height:1.9;color:var(--ink-dim)}
+.welcome-body em{font-style:normal;color:var(--gold)}
+.welcome-body p+p{margin-top:.7rem}
+
+@media (max-width:640px){
+  .brand{letter-spacing:.2em}
+  .stats{gap:.7rem;font-size:.72rem}
+  .grades{grid-template-columns:repeat(2,1fr)}
+}
+@media (prefers-reduced-motion:reduce){
+  .btn,.panel{transition:none}
+}
+:focus-visible{outline:2px solid var(--gold);outline-offset:2px;border-radius:4px}
+</style>
+</head>
+<body>
+
+<canvas id="sky" aria-label="知识星空画布"></canvas>
+
+<header class="topbar">
+  <h1 class="brand">知识星空<small>KNOWLEDGE&nbsp;SKY</small></h1>
+  <div class="stats">
+    <span class="stat"><b id="stStars">0</b>颗星</span>
+    <span class="stat due"><b id="stDue">0</b>待复习</span>
+    <span class="stat"><b id="stStreak">0</b>天连续</span>
+    <button class="icon-btn" id="btnPanel">星表</button>
+  </div>
+</header>
+
+<div class="actions">
+  <button class="btn" id="btnAdd">＋ 种一颗星</button>
+  <button class="btn primary" id="btnReview">开始复习</button>
+</div>
+
+<div id="tip"></div>
+<div id="toast"></div>
+
+<!-- add / edit -->
+<div class="veil" id="veilAdd">
+  <form class="sheet" id="formAdd">
+    <h2 id="addTitle">种一颗星</h2>
+    <div class="field">
+      <label for="fFront">正面 · 问题或概念</label>
+      <input id="fFront" required maxlength="200" placeholder="例:什么是间隔重复?">
+    </div>
+    <div class="field">
+      <label for="fBack">背面 · 答案或解释</label>
+      <textarea id="fBack" required maxlength="2000" placeholder="用自己的话写下来,记得更牢"></textarea>
+    </div>
+    <div class="field">
+      <label for="fTag">星座 · 主题分类</label>
+      <input id="fTag" required maxlength="30" list="tagList" placeholder="例:记忆科学">
+      <datalist id="tagList"></datalist>
+    </div>
+    <div class="sheet-foot">
+      <button type="button" class="ghost" data-close>取消</button>
+      <button type="submit" class="btn primary" id="addSubmit">点亮</button>
+    </div>
+  </form>
+</div>
+
+<!-- review -->
+<div class="veil" id="veilReview">
+  <div class="sheet" role="dialog" aria-label="复习">
+    <div class="review-progress" id="rvProgress"></div>
+    <div class="review-tag" id="rvTag"></div>
+    <div class="review-q" id="rvFront"></div>
+    <div id="rvAnswerWrap" hidden>
+      <div class="review-a" id="rvBack"></div>
+      <div class="grades">
+        <button class="grade g1" id="g1">忘了<small id="p1"></small></button>
+        <button class="grade g2" id="g2">很难<small id="p2"></small></button>
+        <button class="grade g3" id="g3">记得<small id="p3"></small></button>
+        <button class="grade g4" id="g4">轻松<small id="p4"></small></button>
+      </div>
+    </div>
+    <div id="rvFlipWrap">
+      <div class="sheet-foot" style="justify-content:center">
+        <button class="btn" id="btnFlip">显示答案</button>
+      </div>
+      <div class="flip-hint">空格键翻面 · 1–4 评分 · Esc 退出</div>
+    </div>
+    <div class="sheet-foot" style="justify-content:flex-start;margin-top:.6rem">
+      <button class="ghost" data-close>暂停复习</button>
+    </div>
+  </div>
+</div>
+
+<!-- detail -->
+<div class="veil" id="veilDetail">
+  <div class="sheet" role="dialog" aria-label="星星详情">
+    <div class="review-tag" id="dtTag"></div>
+    <div class="review-q" id="dtFront"></div>
+    <div class="review-a" id="dtBack"></div>
+    <div class="detail-stats">
+      <span><b id="dtMem">—</b>记忆强度</span>
+      <span><b id="dtReps">0</b>复习次数</span>
+      <span><b id="dtNext">—</b>下次复习</span>
+    </div>
+    <div class="membar"><i id="dtMembar" style="width:0%"></i></div>
+    <div class="sheet-foot">
+      <button class="ghost danger" id="dtDelete">熄灭这颗星</button>
+      <span style="flex:1"></span>
+      <button class="ghost" id="dtEdit">编辑</button>
+      <button class="btn" data-close>关闭</button>
+    </div>
+  </div>
+</div>
+
+<!-- welcome -->
+<div class="veil" id="veilWelcome">
+  <div class="sheet" role="dialog" aria-label="欢迎">
+    <h2>欢迎来到你的夜空</h2>
+    <div class="welcome-body">
+      <p>这里的每一颗星,都是一个你想记住的知识。</p>
+      <p><em>星星的亮度就是你的记忆强度。</em>不复习,它会随遗忘曲线真实地黯淡;在恰当的时机复习,它会越来越亮、越来越大,复习间隔也会成倍拉长——这就是间隔重复。</p>
+      <p>同一主题的星会连成星座。<em>泛着金光的星,是今天等你复习的星。</em></p>
+      <p>夜空里已经为你点亮了几颗星,它们会教你这一切背后的记忆科学。</p>
+    </div>
+    <div class="sheet-foot">
+      <button class="btn primary" data-close>抬头看看</button>
+    </div>
+  </div>
+</div>
+
+<!-- panel -->
+<aside class="panel" id="panel">
+  <div class="panel-head">
+    <h2>星表</h2>
+    <button class="ghost" id="btnPanelClose">收起</button>
+  </div>
+  <div class="panel-body" id="panelBody"></div>
+  <div class="panel-foot">
+    <button id="btnExport">导出星空 (JSON)</button>
+    <button id="btnImport">导入</button>
+    <input type="file" id="fileImport" accept="application/json" hidden>
+  </div>
+</aside>
+
+<script>
+'use strict';
+/* ================================================================
+   知识星空 — 间隔重复 × 夜空
+   数据、调度、渲染全部在本文件内,localStorage 持久化,离线可用。
+   ================================================================ */
+
+const LS_KEY = 'knowledge-sky-v1';
+const DAY = 86400000;
+const now = () => Date.now();
+
+/* ---------- deterministic hash / rng ---------- */
+function hash32(str){
+  let h = 2166136261;
+  for (let i = 0; i < str.length; i++){
+    h ^= str.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
+}
+function rand01(str){ return hash32(str) / 4294967296; }
+
+/* ---------- state ---------- */
+let state = load();
+function load(){
+  try{
+    const raw = localStorage.getItem(LS_KEY);
+    if (raw) return JSON.parse(raw);
+  }catch(e){ /* corrupted -> start fresh */ }
+  return null;
+}
+function save(){ localStorage.setItem(LS_KEY, JSON.stringify(state)); }
+
+function seed(){
+  const t = now();
+  const mk = (front, back, tag) => ({
+    id: 'c' + Math.random().toString(36).slice(2, 10) + t.toString(36),
+    front, back, tag,
+    createdAt: t, reps: 0, lapses: 0, ease: 2.5,
+    interval: 0, due: t, lastReview: 0
+  });
+  return {
+    version: 1,
+    createdAt: t,
+    totalReviews: 0,
+    streak: { count: 0, lastDate: '' },
+    cards: [
+      mk('什么是间隔重复(Spaced Repetition)?',
+         '把复习安排在「快要忘记」的时刻,每次成功回忆后把下次间隔拉得更长。同样的时间投入,长期记忆效果远超集中式重复背诵。','记忆科学'),
+      mk('遗忘曲线是谁发现的?它说了什么?',
+         '艾宾浩斯(Hermann Ebbinghaus, 1885)。记忆保持率随时间指数式衰减——刚学完的内容一天内可能忘掉大半,但每次复习都会让曲线变得更平缓。','记忆科学'),
+      mk('什么是主动回忆(Active Recall)?',
+         '不看答案、先努力从脑中提取。提取这个动作本身会加固记忆,效果远好于反复阅读。这也是这个应用让你先看问题、再翻答案的原因。','记忆科学'),
+      mk('为什么「感觉学会了」常常靠不住?',
+         '流利错觉(Illusion of fluency):反复看同一份材料会觉得熟悉,但熟悉感 ≠ 能提取。检验记忆唯一可靠的方式是合上书测试自己。','记忆科学'),
+      mk('这颗星为什么会变暗?',
+         '它的亮度 = 按遗忘曲线估算的记忆保持率。半衰期由你的复习间隔决定:复习越多次、间隔越长,星星衰减得越慢。让整片夜空保持明亮,就是学习本身。','使用这片夜空'),
+      mk('泛金光的星是什么意思?',
+         '它到了最佳复习时机——再不复习就要掉进遗忘曲线的陡坡了。点「开始复习」,凭记忆回答后如实评分,调度算法会为它安排下一次出现的时间。','使用这片夜空'),
+      mk('评「忘了」会怎样?',
+         '这颗星会稍后在本轮复习中再次出现,间隔重置、从头培养。别有心理负担:暴露弱点正是复习的价值所在,诚实评分才能让算法帮到你。','使用这片夜空'),
+    ]
+  };
+}
+
+const isNew = !state;
+if (isNew){ state = seed(); save(); }
+
+/* ---------- scheduling (SM-2 变体) ---------- */
+function preview(card, grade){
+  const ease = card.ease, iv = card.interval;
+  switch(grade){
+    case 1: return { interval: 0, ease: Math.max(1.3, ease - 0.2), lapse: true };
+    case 2: return { interval: Math.max(1, iv * 1.2), ease: Math.max(1.3, ease - 0.15) };
+    case 3: return { interval: iv < 1 ? 1 : iv * ease, ease };
+    case 4: return { interval: iv < 1 ? 3 : iv * ease * 1.3, ease: Math.min(3.2, ease + 0.15) };
+  }
+}
+function fmtInterval(days){
+  if (days < 1) return '10 分钟';
+  if (days < 30) return Math.round(days) + ' 天';
+  if (days < 365) return (days / 30).toFixed(1).replace(/\.0$/, '') + ' 个月';
+  return (days / 365).toFixed(1).replace(/\.0$/, '') + ' 年';
+}
+function applyGrade(card, grade){
+  const p = preview(card, grade);
+  card.ease = p.ease;
+  card.interval = p.interval;
+  card.lastReview = now();
+  card.due = p.interval < 1 ? now() + 10 * 60000 : now() + p.interval * DAY;
+  card.reps++;
+  if (p.lapse) card.lapses++;
+  state.totalReviews++;
+}
+
+/* ---------- memory strength (星星亮度) ---------- */
+function strength(card){
+  const t = now();
+  if (!card.lastReview){
+    // 新星:半衰期 12 小时,催你第一次复习
+    return Math.pow(2, -(t - card.createdAt) / (DAY * 0.5));
+  }
+  const halfLife = Math.max(0.4, card.interval) * DAY;
+  return Math.pow(2, -(t - card.lastReview) / halfLife);
+}
+const isDue = c => c.due <= now();
+const dueCards = () => state.cards.filter(isDue);
+
+/* ---------- streak ---------- */
+function dayKey(t){ const d = new Date(t); return d.getFullYear() + '-' + (d.getMonth()+1) + '-' + d.getDate(); }
+function bumpStreak(){
+  const today = dayKey(now()), yest = dayKey(now() - DAY);
+  const s = state.streak;
+  if (s.lastDate === today) return;
+  s.count = (s.lastDate === yest) ? s.count + 1 : 1;
+  s.lastDate = today;
+}
+function currentStreak(){
+  const s = state.streak;
+  const today = dayKey(now()), yest = dayKey(now() - DAY);
+  return (s.lastDate === today || s.lastDate === yest) ? s.count : 0;
+}
+
+/* ================================================================
+   canvas 星空渲染
+   ================================================================ */
+const canvas = document.getElementById('sky');
+const ctx = canvas.getContext('2d');
+const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+let W = 0, H = 0, DPR = 1;
+let bgStars = [], nebulae = [];
+let layout = new Map();          // cardId -> {x,y}
+let shooting = [];               // active shooting stars
+let bursts = [];                 // "star born" flashes
+
+function resize(){
+  DPR = Math.min(2, window.devicePixelRatio || 1);
+  W = window.innerWidth; H = window.innerHeight;
+  canvas.width = W * DPR; canvas.height = H * DPR;
+  canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  buildBackground();
+  buildLayout();
+}
+window.addEventListener('resize', resize);
+
+function buildBackground(){
+  bgStars = [];
+  const n = Math.round(W * H / 6000);
+  for (let i = 0; i < n; i++){
+    const k = 'bg' + i;
+    bgStars.push({
+      x: rand01(k + 'x') * W,
+      y: rand01(k + 'y') * H,
+      r: 0.3 + rand01(k + 'r') * 0.9,
+      a: 0.12 + rand01(k + 'a') * 0.4,
+      tw: rand01(k + 't') * Math.PI * 2
+    });
+  }
+  nebulae = [0,1,2].map(i => ({
+    x: rand01('nbx' + i) * W,
+    y: rand01('nby' + i) * H,
+    r: (0.3 + rand01('nbr' + i) * 0.4) * Math.min(W, H),
+    hue: [230, 265, 200][i]
+  }));
+}
+
+/* 星座中心由 tag 决定,星星围绕中心散布 */
+function buildLayout(){
+  layout.clear();
+  const tags = [...new Set(state.cards.map(c => c.tag))];
+  const centers = new Map();
+  tags.forEach(tag => {
+    centers.set(tag, {
+      x: (0.16 + rand01('cx:' + tag) * 0.68) * W,
+      y: (0.22 + rand01('cy:' + tag) * 0.58) * H
+    });
+  });
+  const spread = Math.min(W, H) * 0.17;
+  state.cards.forEach(c => {
+    const ctr = centers.get(c.tag);
+    const ang = rand01('a:' + c.id) * Math.PI * 2;
+    const rad = (0.25 + rand01('r:' + c.id) * 0.75) * spread;
+    layout.set(c.id, {
+      x: Math.min(W - 20, Math.max(20, ctr.x + Math.cos(ang) * rad * 1.4)),
+      y: Math.min(H - 20, Math.max(60, ctr.y + Math.sin(ang) * rad))
+    });
+  });
+}
+
+function spawnShooting(){
+  const fromLeft = Math.random() < 0.5;
+  shooting.push({
+    x: fromLeft ? -40 : W + 40,
+    y: Math.random() * H * 0.4,
+    vx: (fromLeft ? 1 : -1) * (6 + Math.random() * 5),
+    vy: 2 + Math.random() * 2,
+    life: 1
+  });
+}
+function spawnBurst(x, y, gold){
+  bursts.push({ x, y, t: 0, gold: !!gold });
+}
+
+let frame = 0;
+function draw(){
+  frame++;
+  const t = now();
+  ctx.clearRect(0, 0, W, H);
+
+  // 底色
+  const g = ctx.createLinearGradient(0, 0, 0, H);
+  g.addColorStop(0, '#05070f');
+  g.addColorStop(1, '#0a1024');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+
+  // 星云
+  nebulae.forEach(nb => {
+    const rg = ctx.createRadialGradient(nb.x, nb.y, 0, nb.x, nb.y, nb.r);
+    rg.addColorStop(0, `hsla(${nb.hue},60%,40%,0.10)`);
+    rg.addColorStop(1, 'transparent');
+    ctx.fillStyle = rg;
+    ctx.fillRect(nb.x - nb.r, nb.y - nb.r, nb.r * 2, nb.r * 2);
+  });
+
+  // 背景微星
+  ctx.fillStyle = '#dfe4f5';
+  bgStars.forEach(s => {
+    const tw = reduceMotion ? 1 : 0.7 + 0.3 * Math.sin(frame / 60 + s.tw);
+    ctx.globalAlpha = s.a * tw;
+    ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, 7); ctx.fill();
+  });
+  ctx.globalAlpha = 1;
+
+  // 星座连线:同 tag 的星按围绕质心的角度顺序连成链
+  const byTag = new Map();
+  state.cards.forEach(c => {
+    if (!byTag.has(c.tag)) byTag.set(c.tag, []);
+    byTag.get(c.tag).push(c);
+  });
+  ctx.strokeStyle = 'rgba(136,158,255,0.16)';
+  ctx.lineWidth = 1;
+  byTag.forEach(cards => {
+    if (cards.length < 2) return;
+    const pts = cards.map(c => layout.get(c.id)).filter(Boolean);
+    const cx = pts.reduce((a, p) => a + p.x, 0) / pts.length;
+    const cy = pts.reduce((a, p) => a + p.y, 0) / pts.length;
+    const ordered = pts.slice().sort((a, b) =>
+      Math.atan2(a.y - cy, a.x - cx) - Math.atan2(b.y - cy, b.x - cx));
+    ctx.beginPath();
+    ordered.forEach((p, i) => i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y));
+    ctx.stroke();
+  });
+
+  // 知识星
+  state.cards.forEach(c => {
+    const p = layout.get(c.id); if (!p) return;
+    const st = strength(c);
+    const bright = 0.22 + 0.78 * st;
+    const size = 1.6 + Math.min(3.4, Math.sqrt(c.reps) * 0.9);
+    const due = isDue(c);
+    const tw = reduceMotion ? 1 : 0.85 + 0.15 * Math.sin(frame / 40 + rand01('tw' + c.id) * 9);
+
+    if (due){
+      const pulse = reduceMotion ? 0.6 : 0.45 + 0.35 * Math.sin(frame / 25 + rand01('p' + c.id) * 6);
+      const halo = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, size * 6);
+      halo.addColorStop(0, `rgba(240,198,116,${0.35 * pulse})`);
+      halo.addColorStop(1, 'transparent');
+      ctx.fillStyle = halo;
+      ctx.beginPath(); ctx.arc(p.x, p.y, size * 6, 0, 7); ctx.fill();
+    } else {
+      const halo = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, size * 4);
+      halo.addColorStop(0, `rgba(180,200,255,${0.18 * bright})`);
+      halo.addColorStop(1, 'transparent');
+      ctx.fillStyle = halo;
+      ctx.beginPath(); ctx.arc(p.x, p.y, size * 4, 0, 7); ctx.fill();
+    }
+
+    ctx.globalAlpha = bright * tw;
+    ctx.fillStyle = due ? '#f5d491' : '#eef1ff';
+    ctx.beginPath(); ctx.arc(p.x, p.y, size, 0, 7); ctx.fill();
+
+    // 四芒星光针(亮星才有)
+    if (st > 0.55){
+      ctx.strokeStyle = due ? 'rgba(240,198,116,0.5)' : 'rgba(220,228,255,0.35)';
+      ctx.lineWidth = 0.8;
+      const L = size * 3.2 * st;
+      ctx.beginPath();
+      ctx.moveTo(p.x - L, p.y); ctx.lineTo(p.x + L, p.y);
+      ctx.moveTo(p.x, p.y - L); ctx.lineTo(p.x, p.y + L);
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+  });
+
+  // 流星
+  shooting = shooting.filter(s => s.life > 0 && s.x > -80 && s.x < W + 80);
+  shooting.forEach(s => {
+    const grad = ctx.createLinearGradient(s.x, s.y, s.x - s.vx * 8, s.y - s.vy * 8);
+    grad.addColorStop(0, `rgba(255,250,235,${0.9 * s.life})`);
+    grad.addColorStop(1, 'transparent');
+    ctx.strokeStyle = grad; ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    ctx.moveTo(s.x, s.y);
+    ctx.lineTo(s.x - s.vx * 8, s.y - s.vy * 8);
+    ctx.stroke();
+    s.x += s.vx; s.y += s.vy; s.life -= 0.012;
+  });
+
+  // 新星诞生 / 复习完成的光环
+  bursts = bursts.filter(b => b.t < 1);
+  bursts.forEach(b => {
+    b.t += 0.03;
+    const r = b.t * 46;
+    ctx.strokeStyle = b.gold
+      ? `rgba(240,198,116,${0.7 * (1 - b.t)})`
+      : `rgba(200,215,255,${0.6 * (1 - b.t)})`;
+    ctx.lineWidth = 1.4;
+    ctx.beginPath(); ctx.arc(b.x, b.y, r, 0, 7); ctx.stroke();
+  });
+
+  // 偶发流星(约每 25 秒)
+  if (!reduceMotion && Math.random() < 1 / 1500) spawnShooting();
+
+  requestAnimationFrame(draw);
+}
+
+/* ---------- hover / click on stars ---------- */
+const tip = document.getElementById('tip');
+function starAt(mx, my){
+  let best = null, bd = 16;
+  state.cards.forEach(c => {
+    const p = layout.get(c.id); if (!p) return;
+    const d = Math.hypot(p.x - mx, p.y - my);
+    if (d < bd){ bd = d; best = c; }
+  });
+  return best;
+}
+canvas.addEventListener('mousemove', e => {
+  const c = starAt(e.clientX, e.clientY);
+  if (c){
+    canvas.style.cursor = 'pointer';
+    tip.style.display = 'block';
+    tip.innerHTML = `<div class="t-front"></div><div class="t-meta"></div>`;
+    tip.querySelector('.t-front').textContent = c.front;
+    tip.querySelector('.t-meta').textContent =
+      `${c.tag} · 记忆强度 ${Math.round(strength(c) * 100)}%` + (isDue(c) ? ' · 待复习 ✦' : '');
+    const tx = Math.min(W - tip.offsetWidth - 12, e.clientX + 14);
+    const ty = Math.min(H - tip.offsetHeight - 12, e.clientY + 14);
+    tip.style.left = tx + 'px'; tip.style.top = ty + 'px';
+  } else {
+    canvas.style.cursor = 'default';
+    tip.style.display = 'none';
+  }
+});
+canvas.addEventListener('click', e => {
+  const c = starAt(e.clientX, e.clientY);
+  if (c) openDetail(c.id);
+});
+
+/* ================================================================
+   UI
+   ================================================================ */
+const $ = id => document.getElementById(id);
+const veils = document.querySelectorAll('.veil');
+function openVeil(el){ el.classList.add('open'); }
+function closeVeil(el){ el.classList.remove('open'); }
+document.querySelectorAll('[data-close]').forEach(b =>
+  b.addEventListener('click', () => closeVeil(b.closest('.veil'))));
+veils.forEach(v => v.addEventListener('click', e => { if (e.target === v) closeVeil(v); }));
+
+let toastTimer = 0;
+function toast(msg, gold){
+  const el = $('toast');
+  el.textContent = msg;
+  el.className = gold ? 'show gold' : 'show';
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.className = '', 3200);
+}
+
+function refreshStats(){
+  $('stStars').textContent = state.cards.length;
+  const due = dueCards().length;
+  $('stDue').textContent = due;
+  $('stStreak').textContent = currentStreak();
+  $('btnReview').textContent = due ? `开始复习 (${due})` : '开始复习';
+  $('btnReview').disabled = !due;
+}
+
+/* ---------- add / edit ---------- */
+let editingId = null;
+$('btnAdd').addEventListener('click', () => {
+  editingId = null;
+  $('addTitle').textContent = '种一颗星';
+  $('addSubmit').textContent = '点亮';
+  $('formAdd').reset();
+  refreshTagList();
+  openVeil($('veilAdd'));
+  $('fFront').focus();
+});
+function refreshTagList(){
+  const dl = $('tagList');
+  dl.innerHTML = '';
+  [...new Set(state.cards.map(c => c.tag))].forEach(t => {
+    const o = document.createElement('option'); o.value = t; dl.appendChild(o);
+  });
+}
+$('formAdd').addEventListener('submit', e => {
+  e.preventDefault();
+  const front = $('fFront').value.trim();
+  const back = $('fBack').value.trim();
+  const tag = $('fTag').value.trim();
+  if (!front || !back || !tag) return;
+  if (editingId){
+    const c = state.cards.find(c => c.id === editingId);
+    if (c){ c.front = front; c.back = back; c.tag = tag; }
+    toast('这颗星已更新');
+  } else {
+    const c = {
+      id: 'c' + Math.random().toString(36).slice(2, 10) + now().toString(36),
+      front, back, tag,
+      createdAt: now(), reps: 0, lapses: 0, ease: 2.5,
+      interval: 0, due: now(), lastReview: 0
+    };
+    state.cards.push(c);
+    buildLayout();
+    const p = layout.get(c.id);
+    if (p) spawnBurst(p.x, p.y, false);
+    toast('一颗新星亮起 ✦');
+  }
+  save(); buildLayout(); refreshStats(); renderPanel();
+  closeVeil($('veilAdd'));
+});
+
+/* ---------- detail ---------- */
+let detailId = null;
+function openDetail(id){
+  const c = state.cards.find(c => c.id === id);
+  if (!c) return;
+  detailId = id;
+  $('dtTag').textContent = c.tag;
+  $('dtFront').textContent = c.front;
+  $('dtBack').textContent = c.back;
+  const st = Math.round(strength(c) * 100);
+  $('dtMem').textContent = st + '%';
+  $('dtMembar').style.width = st + '%';
+  $('dtReps').textContent = c.reps;
+  $('dtNext').textContent = isDue(c) ? '现在' :
+    new Date(c.due).toLocaleDateString('zh-CN', { month: 'numeric', day: 'numeric' });
+  openVeil($('veilDetail'));
+}
+$('dtDelete').addEventListener('click', () => {
+  const i = state.cards.findIndex(c => c.id === detailId);
+  if (i >= 0){
+    state.cards.splice(i, 1);
+    save(); buildLayout(); refreshStats(); renderPanel();
+    toast('一颗星归于夜色');
+  }
+  closeVeil($('veilDetail'));
+});
+$('dtEdit').addEventListener('click', () => {
+  const c = state.cards.find(c => c.id === detailId);
+  if (!c) return;
+  closeVeil($('veilDetail'));
+  editingId = c.id;
+  $('addTitle').textContent = '编辑这颗星';
+  $('addSubmit').textContent = '保存';
+  $('fFront').value = c.front; $('fBack').value = c.back; $('fTag').value = c.tag;
+  refreshTagList();
+  openVeil($('veilAdd'));
+});
+
+/* ---------- review session ---------- */
+let queue = [], sessionTotal = 0, sessionDone = 0, current = null;
+$('btnReview').addEventListener('click', startReview);
+function startReview(){
+  queue = dueCards().sort((a, b) => a.due - b.due);
+  if (!queue.length) return;
+  sessionTotal = queue.length; sessionDone = 0;
+  openVeil($('veilReview'));
+  nextCard();
+}
+function nextCard(){
+  if (!queue.length){ finishSession(); return; }
+  current = queue.shift();
+  $('rvProgress').textContent = `${sessionDone + 1} ∕ ${sessionTotal}`;
+  $('rvTag').textContent = current.tag;
+  $('rvFront').textContent = current.front;
+  $('rvBack').textContent = current.back;
+  $('rvAnswerWrap').hidden = true;
+  $('rvFlipWrap').hidden = false;
+}
+function flip(){
+  if (!current || !$('rvAnswerWrap').hidden) return;
+  $('rvAnswerWrap').hidden = false;
+  $('rvFlipWrap').hidden = true;
+  [1,2,3,4].forEach(g => {
+    $('p' + g).textContent = fmtInterval(preview(current, g).interval);
+  });
+}
+$('btnFlip').addEventListener('click', flip);
+function grade(g){
+  if (!current || $('rvAnswerWrap').hidden) return;
+  applyGrade(current, g);
+  const p = layout.get(current.id);
+  if (p) spawnBurst(p.x, p.y, g >= 3);
+  if (g === 1){
+    queue.push(current);          // 忘了 → 本轮稍后再来
+    sessionTotal++;
+  }
+  sessionDone++;
+  bumpStreak();
+  save(); refreshStats();
+  nextCard();
+}
+[1,2,3,4].forEach(g => $('g' + g).addEventListener('click', () => grade(g)));
+
+function finishSession(){
+  current = null;
+  closeVeil($('veilReview'));
+  renderPanel();
+  if (!reduceMotion){
+    let i = 0;
+    const iv = setInterval(() => { spawnShooting(); if (++i >= 3) clearInterval(iv); }, 350);
+  }
+  const milestones = { 10: '第 10 次回忆 — 你的夜空开始有了形状', 50: '第 50 次回忆 — 星座正在成形', 100: '第 100 次回忆 — 这片夜空已经属于你', 300: '第 300 次回忆 — 群星为你运转' };
+  toast(milestones[state.totalReviews] || `今天的星都亮了 · 连续学习 ${currentStreak()} 天 ✦`, true);
+}
+
+/* ---------- keyboard ---------- */
+document.addEventListener('keydown', e => {
+  const reviewOpen = $('veilReview').classList.contains('open');
+  if (e.key === 'Escape'){
+    veils.forEach(closeVeil);
+    $('panel').classList.remove('open');
+    return;
+  }
+  if (!reviewOpen) return;
+  if (e.key === ' '){ e.preventDefault(); flip(); }
+  if (['1','2','3','4'].includes(e.key)) grade(+e.key);
+});
+
+/* ---------- panel ---------- */
+$('btnPanel').addEventListener('click', () => { renderPanel(); $('panel').classList.add('open'); });
+$('btnPanelClose').addEventListener('click', () => $('panel').classList.remove('open'));
+function renderPanel(){
+  const body = $('panelBody');
+  body.innerHTML = '';
+  const byTag = new Map();
+  state.cards.forEach(c => {
+    if (!byTag.has(c.tag)) byTag.set(c.tag, []);
+    byTag.get(c.tag).push(c);
+  });
+  if (!state.cards.length){
+    body.innerHTML = '<p style="color:var(--ink-dim);font-size:.82rem;margin-top:1rem">夜空还是空的。点「种一颗星」开始。</p>';
+    return;
+  }
+  [...byTag.entries()].sort((a, b) => a[0].localeCompare(b[0], 'zh')).forEach(([tag, cards]) => {
+    const h = document.createElement('div');
+    h.className = 'const-name';
+    h.textContent = `${tag} · ${cards.length} 星`;
+    body.appendChild(h);
+    cards.slice().sort((a, b) => a.due - b.due).forEach(c => {
+      const st = strength(c);
+      const row = document.createElement('button');
+      row.className = 'card-row';
+      row.innerHTML = '<span class="dot"></span><span class="name"></span><span class="mem"></span>';
+      const dot = row.querySelector('.dot');
+      dot.style.opacity = (0.25 + 0.75 * st).toFixed(2);
+      dot.style.color = isDue(c) ? 'var(--gold)' : 'var(--ink)';
+      dot.style.background = 'currentColor';
+      row.querySelector('.name').textContent = c.front;
+      row.querySelector('.mem').textContent = isDue(c) ? '待复习 ✦' : Math.round(st * 100) + '%';
+      row.addEventListener('click', () => openDetail(c.id));
+      body.appendChild(row);
+    });
+  });
+}
+
+/* ---------- export / import ---------- */
+$('btnExport').addEventListener('click', () => {
+  const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'knowledge-sky-' + dayKey(now()) + '.json';
+  a.click();
+  URL.revokeObjectURL(a.href);
+});
+$('btnImport').addEventListener('click', () => $('fileImport').click());
+$('fileImport').addEventListener('change', e => {
+  const f = e.target.files[0]; if (!f) return;
+  const r = new FileReader();
+  r.onload = () => {
+    try{
+      const data = JSON.parse(r.result);
+      if (!Array.isArray(data.cards)) throw new Error('bad');
+      state = data;
+      save(); buildLayout(); refreshStats(); renderPanel();
+      toast('星空已导入 · ' + state.cards.length + ' 颗星');
+    }catch(err){ toast('导入失败:不是有效的星空文件'); }
+  };
+  r.readAsText(f);
+  e.target.value = '';
+});
+
+/* ---------- boot ---------- */
+resize();
+refreshStats();
+renderPanel();
+requestAnimationFrame(draw);
+setInterval(refreshStats, 30000);   // 到期状态定时刷新
+if (isNew) openVeil($('veilWelcome'));
+</script>
+</body>
+</html>

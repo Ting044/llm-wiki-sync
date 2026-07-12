@@ -31,7 +31,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install bibtexparser python-dotenv genanki
+          pip install bibtexparser python-dotenv
 
       - name: Find .bib file
         id: bib
@@ -48,25 +48,10 @@ jobs:
             --bib "${{ steps.bib.outputs.bib_file }}" \
             --vault "$VAULT_PATH"
 
-      - name: Export Anki deck
-        env:
-          VAULT_PATH: ${{ github.event.inputs.vault_path || github.workspace }}
-        run: |
-          python3 scripts/export_anki_deck.py \
-            --vault "$VAULT_PATH" \
-            --out anki/LLM-Wiki.apkg
-
-      - name: Upload Anki deck artifact
-        if: hashFiles('anki/LLM-Wiki.apkg') != ''
-        uses: actions/upload-artifact@v4
-        with:
-          name: anki-deck
-          path: anki/LLM-Wiki.apkg
-
-      - name: Commit updated notes and deck
+      - name: Commit updated notes
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add LiteratureNotes/ anki/ .llm-wiki-sync-state.json
+          git add LiteratureNotes/
           git diff --cached --quiet || git commit -m "chore: update literature notes [skip ci]"
           git push || echo "No changes to push"
