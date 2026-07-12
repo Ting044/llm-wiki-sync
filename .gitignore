@@ -11,6 +11,9 @@ __pycache__/
 *.vault-lock
 .obsidian/
 
+# llm-wiki-sync per-run note backups (git history is the durable backup)
+.sync-backups/
+
 # Temp
 *.tmp
 *.swp
